@@ -1,27 +1,31 @@
 locals {
-  max_free_tier_instances = 1
+  max_free_tier_ec2_instances = 1
+  max_free_tier_rds_instances = 1
 }
 
-resource "aws_instance" "free_ec2" {
-  count         = local.max_free_tier_instances
+data "aws_canonical_user_id" "current" {}
+
+resource "aws_instance" "web" {
+  count         = local.max_free_tier_ec2_instances
   ami           = "ami-0c94855ba95c71c99"
   instance_type = "t2.micro"
-  
-  # インスタンス削除防止
+
   lifecycle {
     prevent_destroy = true
   }
+}
 
-  # インスタンス作成時に実行するコマンド
-  provisioner "local-exec" {
-    command = "echo 'Max free tier instances exceeded. Destroying...' && terraform destroy -auto-approve"
-    when    = "create"
-  }
+resource "aws_db_instance" "db" {
+  count             = local.max_free_tier_rds_instances
+  engine            = "mysql"
+  instance_class    = "db.t2.micro"
+  allocated_storage = 20
+  username          = "admin"
+  password          = "password"
 
-  # インスタンス削除時に実行コマンド
-  provisioner "local-exec" {
-    command = "echo 'Max free tier instances exceeded. Destroying...' && terraform destroy -auto-approve"
-    when    = "destroy"
+  lifecycle {
+    prevent_destroy = true
   }
 }
+
 
